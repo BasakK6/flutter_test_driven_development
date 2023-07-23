@@ -933,6 +933,64 @@ class HomeView extends StatelessWidget {
 Integration tests in Flutter are used to test the interactions between multiple parts of the application as a whole. Unlike unit tests and widget tests, integration tests run the entire application in a simulated environment, including interactions with APIs, databases, and other external services.
 Integration tests are more comprehensive and closer to real-world scenarios, ensuring that different components of the application work together correctly. These tests can be more time-consuming than unit and widget tests but provide a higher level of confidence in the overall functionality of the application.
 
+We should code the tests similar to widget testing. However, we must use this line of code before all the testWidget() calls if we want to run the tests in an emulator.
+
+```dart
+void main(){
+  IntegrationTestWidgetsFlutterBinding.ensureInitialized();
+}
+```
+
+Success scenario:
+
+```dart
+void main(){
+  group("Login Flow Integration Test -", (){
+    IntegrationTestWidgetsFlutterBinding.ensureInitialized();
+
+    //test for the success scenario
+    testWidgets("Should show the HomeView when the user enters valid email & password and taps the login button", (widgetTester) async {
+      //ARRANGE
+
+      //load the widget (this method returns a future so we should use await/async)
+      //wrap your desired widget with MaterialApp to have material design principles
+      await widgetTester.pumpWidget(const MaterialApp(home: LoginView()));
+
+      //ACT
+
+      //first, find the TextFormField widgets and set valid texts
+      Finder emailTextFormField = find.byKey(const ValueKey("email_text_form_field"));
+      Finder passwordTextFormField = find.byKey(const ValueKey("password_text_form_field"));
+
+      await widgetTester.enterText(emailTextFormField, "dev.basakk6@gmail.com");
+      await widgetTester.enterText(passwordTextFormField, "12345678");
+
+      //second, find the login button and simulate the press action by tap()
+      Finder loginButton = find.byType(ElevatedButton);
+      await widgetTester.tap(loginButton);
+      //wait for the rendering complete after the action
+      await widgetTester.pumpAndSettle();
+
+      //find the required text after the action completed
+      Finder emptyFieldErrorText = find.text("Required field");
+      Finder emailErrorText = find.text("Please enter a valid email");
+      Finder passwordErrorText = find.text("Password should be a minimum of 8 characters");
+      Finder homeViewTitle = find.text("Home Screen");
+
+      //ASSERT
+
+      //there shouldn't be any error message and the route should change to HomeView
+      expect(emptyFieldErrorText, findsNothing);
+      expect(emailErrorText, findsNothing);
+      expect(passwordErrorText, findsNothing);
+      expect(homeViewTitle, findsOneWidget);
+    });
+  });
+}
+```
+
+We can add the other widget tests for the error case. You can find the complete code under **integration_test** folder.
+
 ## In Summary
 
 Unit tests focus on testing small, isolated units of code.
