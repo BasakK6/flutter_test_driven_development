@@ -38,6 +38,12 @@ This tutorial is created with the help of a [Udemy course](https://www.udemy.com
 
 Flutter has 3 options for tests. **Unit Tests**, **Widget Tests**, and **Integration Tests** are different types of testing methodologies used to ensure the quality and correctness of the Flutter applications.
 
+## What will we create?
+
+Below is the screen recording of the finished app (we will create this app with TDD approach by using unit, widget and integration tests. We will also use mockito package to mock the API request): 
+
+<img src="https://github.com/BasakK6/flutter_test_driven_development/blob/master/readme_assets/android_screen_recording.gif?raw=true" alt="UI screen recording" width="250"/>
+
 ## Flutter Unit Testing
 
 Unit tests in Flutter are used to test small, isolated pieces of code, typically at the function or method level. The purpose of unit tests is to verify that individual units of code, such as functions, methods, or classes, work as expected and produce the correct output for a given input. In Flutter, unit tests are written using the built-in testing framework called flutter_test.
