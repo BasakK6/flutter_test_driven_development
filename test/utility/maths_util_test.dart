@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:test_driven_development/maths_util.dart';
+import 'package:test_driven_development/utility/maths_util.dart';
 
 void main() {
   group("Maths util -", () {

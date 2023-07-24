@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:test_driven_development/home_view.dart';
-import 'package:test_driven_development/validator.dart';
+import 'package:test_driven_development/features/home/view/home_view.dart';
+import 'package:test_driven_development/features/login/utility/validator.dart';
 
 class LoginView extends StatefulWidget {
   const LoginView({Key? key}) : super(key: key);
