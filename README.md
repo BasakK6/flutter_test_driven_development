@@ -991,6 +991,389 @@ void main(){
 
 We can add the other widget tests for the error case. You can find the complete code under **integration_test** folder.
 
+## Using Mocks in Unit Testing (with mockito package)
+
+Unit tests do not interact with external dependencies like databases, network services, or user interfaces. Instead, they mock or stub these dependencies to focus solely on testing the logic within the unit being tested.
+
+### USE CASE: Posts List 
+
+We want to retrieve the posts data from the "https://jsonplaceholder.typicode.com/comments" API end point and show the posts with a ListView inside the Home Screen.
+
+NOTE: Udemy course uses a REST API related to book data and **http** library instead of **Dio** package for the REST API call. I wanted to use Dio with Mockito package.
+
+Before writing code we should import necessary packages:
+
+```yaml
+dependencies:
+  #network requests
+  dio: ^5.3.0
+
+dev_dependencies:
+  #test related mocks
+  mockito: ^5.4.0
+  #code generation
+  build_runner: ^2.3.3
+```
+
+First we should create a service class that receives the Dio instance from its constructor. This dependency injection is important for writing testable code. 
+
+```dart
+import 'dart:io';
+
+import 'package:dio/dio.dart';
+import 'package:test_driven_development/features/home/model/post.dart';
+
+class PostsService {
+  final Dio _dio;
+  final _apiUrl = "https://jsonplaceholder.typicode.com/comments";
+
+  PostsService(this._dio);
+
+  Future<List<Post>> fetchData() async {
+    //TODO: use _dio instance to get data from _apiURL
+    return [];
+  }
+}
+```
+
+Then we write the SUCCESS and FAILURE test cases inside the posts:.
+
+post_service_test.dart:
+```dart
+import 'dart:io';
+
+import 'package:dio/dio.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:mockito/annotations.dart';
+import 'package:mockito/mockito.dart';
+import 'package:test_driven_development/features/home/model/post.dart';
+import 'package:test_driven_development/features/home/service/post_service.dart';
+
+import 'post_service_test.mocks.dart';
+
+@GenerateNiceMocks([MockSpec<Dio>()])
+void main() {
+  group("Posts Service Tests -", () {
+    //Success Scenario
+    test("Should return list of post data if the Post Service can fetch posts", () async {
+      //ARRANGE
+      const apiUrl = "https://jsonplaceholder.typicode.com/comments";
+      final responseStub = [
+        {
+          "postId": 1,
+          "id": 1,
+          "name": "id labore ex et quam laborum",
+          "email": "Eliseo@gardner.biz",
+          "body":
+              "laudantium enim quasi est quidem magnam voluptate ipsam eos\ntempora quo necessitatibus\ndolor quam autem quasi\nreiciendis et nam sapiente accusantium"
+        },
+        {
+          "postId": 1,
+          "id": 2,
+          "name": "quo vero reiciendis velit similique earum",
+          "email": "Jayne_Kuhic@sydney.com",
+          "body":
+              "est natus enim nihil est dolore omnis voluptatem numquam\net omnis occaecati quod ullam at\nvoluptatem error expedita pariatur\nnihil sint nostrum voluptatem reiciendis et"
+        },
+      ];
+      final mockDio = MockDio();
+      when(mockDio.get(apiUrl)).thenAnswer((realInvocation) async => Response(
+            data: responseStub,
+            requestOptions: RequestOptions(),
+            statusCode: HttpStatus.ok,
+          ));
+
+      //ACT
+      final postsService = PostService(mockDio);
+      final result = await postsService.fetchData();
+
+      //ASSERT
+      expect(result, isA<List<Post>>());
+      expect(result.length, 2);
+    });
+  });
+
+  //Error Scenario
+  test("Should throw an exception if the Post Service can't fetch the posts",
+      () async {
+    //ARRANGE
+    const apiUrl = "https://jsonplaceholder.typicode.com/comments";
+    final mockDio = MockDio();
+    when(mockDio.get(apiUrl)).thenAnswer((realInvocation) async => Response(
+          requestOptions: RequestOptions(),
+          statusCode: HttpStatus.unauthorized,
+        ));
+
+    //ACT
+    final postsService = PostService(mockDio);
+    final result = await postsService.fetchData();
+
+    //ASSERT
+    expect(result, throwsException);
+  });
+}
+```
+
+Before writing tests we should use the annotation below in order to generate a mock class for Dio class. Then, we run **flutter pub run build_runner build** command in the terminal. This will create the **post_service_test.mocks.dart** file:
+
+```dart
+@GenerateNiceMocks([MockSpec<Dio>()])
+```
+
+In the success scenario we create a stub for the Response that will be received when the MockDio's get method is called with the defined API end point. Then, we expect to have a List of Post items that has a length of 2 (since the stub has only 2 items).
+In the error scenario we expect to have an Exception thrown since the Response statusCode is not HttpStatus.ok (200).
+We run the tests and see them fail. After that we implement the service code:
+
+```dart
+import 'dart:io';
+
+import 'package:dio/dio.dart';
+import 'package:test_driven_development/features/home/model/post.dart';
+
+class PostService {
+  final Dio _dio;
+  final _apiUrl = "https://jsonplaceholder.typicode.com/comments";
+
+  PostService(this._dio);
+
+  Future<List<Post>> fetchData() async {
+   final response = await _dio.get(_apiUrl);
+    if (response.statusCode == HttpStatus.ok) {
+      if (response.data is List) {
+        return (response.data as List)
+            .map((item) => Post.fromJson(item))
+            .toList();
+      }
+    } else {
+      throw (Exception("Couldn't retrieve data"));
+    }
+    return [];
+  }
+}
+```
+
+Our model class:
+```dart
+class Post {
+  int? postId;
+  int? id;
+  String? name;
+  String? email;
+  String? body;
+
+  Post({this.postId, this.id, this.name, this.email, this.body});
+
+  Post.fromJson(Map<String, dynamic> json) {
+    postId = json['postId'];
+    id = json['id'];
+    name = json['name'];
+    email = json['email'];
+    body = json['body'];
+  }
+}
+```
+
+After the implementation, we see the tests passing.
+
+Now we can use this service inside our home screen:
+
+home_view_model.dart:
+```dart
+import 'package:test_driven_development/features/home/view/home_view.dart';
+
+abstract class HomeViewModel extends State<HomeView>{
+  late final PostService _postsService;
+  late final Future<List<Post>> postsFuture;
+
+  @override
+  void initState() {
+    super.initState();
+    _postsService = PostService(Dio());
+    postsFuture = _postsService.fetchData();
+  }
+}
+```
+
+home_view.dart:
+```dart
+import 'package:flutter/material.dart';
+import 'package:test_driven_development/features/home/model/post.dart';
+import 'package:test_driven_development/features/home/view/components/post_card.dart';
+import 'package:test_driven_development/features/home/view_model/home_view_model.dart';
+
+class HomeView extends StatefulWidget {
+  const HomeView({Key? key}) : super(key: key);
+
+  @override
+  State<HomeView> createState() => _HomeViewState();
+}
+
+class _HomeViewState extends HomeViewModel {
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text("Home Screen"),
+      ),
+      body: Center(
+        child: FutureBuilder<List<Post>>(
+          future: postsFuture,
+          builder: (context, asyncSnapshot) {
+            switch (asyncSnapshot.connectionState) {
+              case ConnectionState.done:
+                if (asyncSnapshot.hasError) {
+                  return Text(asyncSnapshot.error.toString());
+                } else {
+                  //asyncSnapshot.hasData
+                  return asyncSnapshot.data?.isEmpty ?? false
+                      ? const Text("There is no data")
+                      : buildPostsListView(asyncSnapshot);
+                }
+              default:
+                return const CircularProgressIndicator();
+            }
+          },
+        ),
+      ),
+    );
+  }
+
+  ListView buildPostsListView(AsyncSnapshot asyncSnapshot) {
+    return ListView.builder(
+      itemCount: asyncSnapshot.data?.length,
+      itemBuilder: (context, index) {
+        return PostCard(post: asyncSnapshot.data?[index]);
+      },
+    );
+  }
+}
+```
+
+post_card.dart:
+```dart
+import 'package:flutter/material.dart';
+import 'package:test_driven_development/features/home/model/post.dart';
+
+class PostCard extends StatelessWidget {
+  const PostCard({
+    super.key,
+    required this.post,
+  });
+
+  final Post? post;
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(8.0),
+        child: post == null
+            ? const SizedBox.shrink()
+            : ListTile(
+          leading: Text(post!.id.toString() ?? ""),
+          title: Text(post!.name ?? ""),
+          subtitle: Text(post!.body ?? ""),
+        ),
+      ),
+    );
+  }
+}
+```
+
+One improvement we can do in our test codes is that we can use **Setup()** and **tearDown()** methods for repeated code. Below is the final version of the test codes:
+
+NOTE: **setUp()** will be called before each test is run, and the **tearDown()** will be called after each the test case is finished.
+
+```dart
+import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:mockito/annotations.dart';
+import 'package:mockito/mockito.dart';
+import 'package:test_driven_development/features/home/model/post.dart';
+import 'package:test_driven_development/features/home/service/post_service.dart';
+
+import 'post_service_test.mocks.dart';
+
+@GenerateNiceMocks([MockSpec<Dio>()])
+void main() {
+  late String apiUrl;
+  late MockDio mockDio;
+
+  setUp((){
+    mockDio = MockDio();
+    apiUrl = "https://jsonplaceholder.typicode.com/comments";
+  });
+
+  tearDown(() => (){
+    mockDio.close();
+  });
+
+  group("Posts Service Tests -", () {
+    //Success Scenario
+    test("Should return list of post data if the Post Service can fetch posts", () async {
+      //ARRANGE
+      final responseStub = [
+        {
+          "postId": 1,
+          "id": 1,
+          "name": "id labore ex et quam laborum",
+          "email": "Eliseo@gardner.biz",
+          "body":
+          "laudantium enim quasi est quidem magnam voluptate ipsam eos\ntempora quo necessitatibus\ndolor quam autem quasi\nreiciendis et nam sapiente accusantium"
+        },
+        {
+          "postId": 1,
+          "id": 2,
+          "name": "quo vero reiciendis velit similique earum",
+          "email": "Jayne_Kuhic@sydney.com",
+          "body":
+          "est natus enim nihil est dolore omnis voluptatem numquam\net omnis occaecati quod ullam at\nvoluptatem error expedita pariatur\nnihil sint nostrum voluptatem reiciendis et"
+        },
+      ];
+
+      when(mockDio.get(apiUrl)).thenAnswer((realInvocation) async => Response(
+        data: responseStub,
+        requestOptions: RequestOptions(),
+        statusCode: HttpStatus.ok,
+      ));
+
+      //ACT
+      final postsService = PostService(mockDio);
+      final result = await postsService.fetchData();
+
+      //ASSERT
+      expect(result, isA<List<Post>>());
+      expect(result.length, 2);
+    });
+  });
+
+  //Error Scenario
+  test("Should throw an exception if the Post Service can't fetch the posts",
+          () async {
+        //ARRANGE
+        when(mockDio.get(apiUrl)).thenAnswer((realInvocation) async => Response(
+          requestOptions: RequestOptions(),
+          statusCode: HttpStatus.unauthorized,
+        ));
+
+        //ACT
+        final postsService = PostService(mockDio);
+
+        try{
+          final result = await postsService.fetchData();
+          //ASSERT
+          expect(result, throwsException);
+        }
+        catch(e){
+          if (kDebugMode) {
+            print("Exception caught");
+          }
+        }
+      });
+}
+```
+
 ## In Summary
 
 Unit tests focus on testing small, isolated units of code.
