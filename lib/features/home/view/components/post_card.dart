@@ -7,19 +7,17 @@ class PostCard extends StatelessWidget {
     required this.post,
   });
 
-  final Post? post;
+  final Post post;
 
   @override
   Widget build(BuildContext context) {
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(8.0),
-        child: post == null
-            ? const SizedBox.shrink()
-            : ListTile(
-                leading: Text(post!.id.toString() ?? ""),
-                title: Text(post!.name ?? ""),
-                subtitle: Text(post!.body ?? ""),
+        child: ListTile(
+                leading: Text("${post.id ?? ""}"),
+                title: Text(post.name ?? ""),
+                subtitle: Text(post.body ?? ""),
               ),
       ),
     );
